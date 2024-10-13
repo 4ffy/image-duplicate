@@ -1,13 +1,16 @@
 //! Structs and methods for dealing with a database of image hashes. [`HashDB`]
-//! forms the main interface.
+//! forms the main interface. `HashDB` is backed by a [`HashMap`] and supports
+//! hashing image files as well as reading and writing to Zlib'd
+//! [MessagePack][`rmp`].
 
+use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use image_hasher::HasherConfig;
 use rmp_serde::{config::BytesMode, Serializer};
 use serde::{
     de::{self, Visitor},
     Deserialize, Serialize,
 };
-use std::{collections::HashMap, fs, hash::Hash, path::Path};
+use std::{collections::HashMap, fs, hash::Hash, io::Write, path::Path};
 use thiserror::Error;
 
 const SUFFIXES: [&str; 7] = ["bmp", "gif", "jpg", "jpeg", "jxl", "png", "webp"];
@@ -104,7 +107,7 @@ impl HashDB {
         Ok(())
     }
 
-    /// Write the database to a [MessagePack][rmp] file.
+    /// Write the database to a Zlib'd [MessagePack][rmp] file.
     pub fn to_file<P: AsRef<Path>>(&self, file: P) -> Result<(), HashDBError> {
         // Use this method over `rmp_serde::to_vec` to avoid overhead on packing
         // bytes. (If this breaks decoding, maybe live with the overhead?)
@@ -112,13 +115,17 @@ impl HashDB {
         self.serialize(
             &mut Serializer::new(&mut buf).with_bytes(BytesMode::ForceAll),
         )?;
-        fs::write(file, buf)?;
+        let mut z = ZlibEncoder::new(Vec::new(), Compression::default());
+        z.write_all(&buf)?;
+        fs::write(file, z.finish()?)?;
         Ok(())
     }
 
-    /// Read a database from a [MessagePack][rmp] file.
+    /// Read a database from a Zlib'd [MessagePack][rmp] file.
     pub fn from_file<P: AsRef<Path>>(file: P) -> Result<Self, HashDBError> {
-        Ok(rmp_serde::from_read(fs::read(file)?.as_slice())?)
+        Ok(rmp_serde::from_read(ZlibDecoder::new(
+            fs::read(file)?.as_slice(),
+        ))?)
     }
 
     /// Read image files from the given directory. Add entries for any images
