@@ -1,3 +1,7 @@
+//! Structs and methods for dealing with a database of image hashes.
+//! [`HashEntry`] and [`HashDB`] form the main interface. `HashDB` provides
+//! methods to dump the database and read from a [MessagePack][rmp] file.
+
 use image_hasher::HasherConfig;
 use rmp_serde::{config::BytesMode, Serializer};
 use serde::{
@@ -7,7 +11,7 @@ use serde::{
 use std::{collections::HashSet, fs, hash::Hash, path::Path};
 use thiserror::Error;
 
-/// Wrapper around `md5::Digest` for serialization.
+/// Wrapper around [`md5::Digest`] for serialization.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Digest(md5::Digest);
 
@@ -35,7 +39,7 @@ impl<'de> Deserialize<'de> for Digest {
     }
 }
 
-/// Helper for deserializing Digest.
+/// Helper for deserializing [`Digest`].
 struct DigestVisitor;
 
 impl<'de> Visitor<'de> for DigestVisitor {
@@ -58,7 +62,7 @@ impl<'de> Visitor<'de> for DigestVisitor {
     }
 }
 
-/// Wrapper around `image_hasher::ImageHash` for serialization.
+/// Wrapper around [`image_hasher::ImageHash`] for serialization.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ImageHash(image_hasher::ImageHash);
 
@@ -86,7 +90,7 @@ impl<'de> Deserialize<'de> for ImageHash {
     }
 }
 
-/// Helper for deserializing ImageHash.
+/// Helper for deserializing [`ImageHash`].
 struct ImageHashVisitor;
 
 impl<'de> Visitor<'de> for ImageHashVisitor {
@@ -112,14 +116,22 @@ impl<'de> Visitor<'de> for ImageHashVisitor {
     }
 }
 
+/// Pair a filename along with its [md5][Digest] and [hash][ImageHash]. Entries
+/// are considered equivalent if their md5 hashes are equivalent.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct HashEntry {
+    /// Canonicalized filename of the image that the entry is derived from.
     pub filename: String,
+
+    /// md5 hash of the image.
     pub md5: Digest,
+
+    /// Perceptual hash of the image.
     pub hash: ImageHash,
 }
 
 impl HashEntry {
+    /// Read an image file and form a `HashEntry`.
     pub fn read_file<P: AsRef<Path>>(file: P) -> Result<Self, HashEntryError> {
         // If I am to hash in parallel, each will need its own hasher, probably.
         let hasher = HasherConfig::new().to_hasher();
@@ -139,15 +151,6 @@ impl HashEntry {
     }
 }
 
-/// Errors that can happen when dealing with HashEntry.
-#[derive(Debug, Error)]
-pub enum HashEntryError {
-    #[error("could not read image: {0}")]
-    ImageError(#[from] image::ImageError),
-    #[error("IO error: {0}")]
-    IOError(#[from] std::io::Error),
-}
-
 impl PartialEq for HashEntry {
     fn eq(&self, other: &Self) -> bool {
         self.md5 == other.md5
@@ -162,14 +165,29 @@ impl Hash for HashEntry {
     }
 }
 
+/// Errors that can happen when dealing with [`HashEntry`].
+#[derive(Debug, Error)]
+pub enum HashEntryError {
+    /// Wrapper around [`image::ImageError`].
+    #[error("could not read image: {0}")]
+    ImageError(#[from] image::ImageError),
+
+    /// Wrapper around [`std::io::Error`].
+    #[error("IO error: {0}")]
+    IOError(#[from] std::io::Error),
+}
+
+/// A database storing [`HashEntry`] items via an internal [`HashSet`].
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub struct HashDB(HashSet<HashEntry>);
 
 impl HashDB {
+    /// Create a new hash database.
     pub fn new() -> Self {
         HashDB(HashSet::new())
     }
 
+    /// Write the database to a [MessagePack][rmp] file.
     pub fn to_file<P: AsRef<Path>>(&self, file: P) -> Result<(), HashDBError> {
         // Use this method over `rmp_serde::to_vec` to avoid overhead on packing
         // bytes. (If this breaks decoding, maybe live with the overhead?)
@@ -181,22 +199,30 @@ impl HashDB {
         Ok(())
     }
 
+    /// Read a database from a [MessagePack][rmp] file.
     pub fn from_file<P: AsRef<Path>>(file: P) -> Result<Self, HashDBError> {
         Ok(rmp_serde::from_read(fs::read(file)?.as_slice())?)
     }
 
-    pub fn insert(&mut self, entry: &HashEntry) {
-        self.0.insert(entry.clone());
+    /// Insert a [`HashEntry`] into the database. This defers to
+    /// [`HashSet::insert`] and thus has the same semantics.
+    pub fn insert(&mut self, entry: &HashEntry) -> bool {
+        self.0.insert(entry.clone())
     }
 }
 
-/// Errors that can happen when dealing with HashDB.
+/// Errors that can happen when dealing with [`HashDB`].
 #[derive(Debug, Error)]
 pub enum HashDBError {
+    /// Wrapper around [`rmp_serde::decode::Error`].
     #[error("could not decode database: {0}")]
     DecodeError(#[from] rmp_serde::decode::Error),
+
+    /// Wrapper around [`rmp_serde::encode::Error`].
     #[error("could not encode database: {0}")]
     EncodeError(#[from] rmp_serde::encode::Error),
+
+    /// Wrapper around [`std::io::Error`].
     #[error("IO Error: {0}")]
     IOError(#[from] std::io::Error),
 }

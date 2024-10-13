@@ -1,3 +1,6 @@
+#![warn(missing_docs)]
+//! The main image duplicate program.
+
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use hashdb::{HashDB, HashEntry};
@@ -5,6 +8,7 @@ use std::{fs, path::PathBuf};
 
 pub mod hashdb;
 
+/// Arguments to the image duplicate program.
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 pub struct Args {
@@ -20,6 +24,7 @@ pub struct Args {
     pub recursive: bool,
 }
 
+/// Run the image duplicate program.
 pub fn run(args: &Args) -> Result<()> {
     let root = args.path.clone();
     if !root.is_dir() {
