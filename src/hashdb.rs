@@ -211,6 +211,25 @@ impl HashDB {
     }
 }
 
+impl FromIterator<HashEntry> for HashDB {
+    fn from_iter<T: IntoIterator<Item = HashEntry>>(iter: T) -> Self {
+        let mut db = HashDB::new();
+        for i in iter {
+            db.insert(&i);
+        }
+        db
+    }
+}
+
+impl IntoIterator for HashDB {
+    type Item = HashEntry;
+    type IntoIter = std::collections::hash_set::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 /// Errors that can happen when dealing with [`HashDB`].
 #[derive(Debug, Error)]
 pub enum HashDBError {
