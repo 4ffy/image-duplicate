@@ -10,7 +10,9 @@ use serde::{
     de::{self, Visitor},
     Deserialize, Serialize,
 };
-use std::{collections::HashMap, fs, hash::Hash, io::Write, path::Path};
+use std::{
+    collections::HashMap, fmt::Display, fs, hash::Hash, io::Write, path::Path,
+};
 use thiserror::Error;
 
 const SUFFIXES: [&str; 7] = ["bmp", "gif", "jpg", "jpeg", "jxl", "png", "webp"];
@@ -148,6 +150,15 @@ impl HashDB {
         &mut self, _root: P,
     ) -> Result<(), HashDBError> {
         unimplemented!()
+    }
+}
+
+impl Display for HashDB {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (k, v) in self.0.iter() {
+            write!(f, "{}\t{k}\n", v.0.to_base64())?;
+        }
+        Ok(())
     }
 }
 

@@ -60,7 +60,7 @@ pub fn run(args: &Args) -> Result<()> {
         }
     }
 
-    dbg!(&hashdb);
+    println!("{hashdb}");
 
     if !args.no_dump {
         hashdb.to_file(&db_file)?;
