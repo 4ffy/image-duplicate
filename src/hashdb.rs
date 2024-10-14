@@ -11,7 +11,12 @@ use serde::{
     Deserialize, Serialize,
 };
 use std::{
-    collections::HashMap, fmt::Display, fs, hash::Hash, io::Write, path::Path,
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    fs,
+    hash::Hash,
+    io::Write,
+    path::Path,
 };
 use thiserror::Error;
 
@@ -136,12 +141,36 @@ impl HashDB {
     pub fn read_dir<P: AsRef<Path>>(
         &mut self, root: P,
     ) -> Result<(), HashDBError> {
-        for entry in fs::read_dir(root)?
+        // I have to clone the keys from the DB because if I use references, It
+        // borrows the database and I can't insert any new entries.
+        let db_images: HashSet<String> =
+            self.0.keys().map(|x| x.clone()).collect();
+
+        let fs_images: HashSet<String> = fs::read_dir(&root)?
             .filter_map(|x| x.ok())
-            .filter(|x| has_image_suffix(x.path()))
-        {
-            self.insert_image(entry.path())?;
+            .filter_map(|x| {
+                let p = x.path();
+                match has_image_suffix(&p) {
+                    true => p.canonicalize().ok(),
+                    false => None,
+                }
+            })
+            .map(|x| x.to_string_lossy().into_owned())
+            .collect();
+
+        dbg!(&db_images);
+        dbg!(&fs_images);
+
+        // Images on filesystem but not in DB - Add to DB
+        for file in fs_images.difference(&db_images) {
+            self.insert_image(file)?;
         }
+
+        // Images in DB but not on filesystem - Remove from DB
+        for file in db_images.difference(&fs_images) {
+            self.0.remove(file);
+        }
+
         Ok(())
     }
 
