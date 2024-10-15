@@ -19,6 +19,7 @@ use std::{
     path::Path,
 };
 use thiserror::Error;
+use walkdir::WalkDir;
 
 const SUFFIXES: [&str; 7] = ["bmp", "gif", "jpg", "jpeg", "jxl", "png", "webp"];
 
@@ -87,7 +88,8 @@ impl<'de> Visitor<'de> for ImageHashVisitor {
     }
 }
 
-/// A database storing image hashes via an internal [`HashMap`].
+/// A database storing image hashes via an internal [`HashMap`] that pairs the
+/// canonicalized filename of the image with its perceptual hash.
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub struct HashDB(HashMap<String, ImageHash>);
 
@@ -114,27 +116,6 @@ impl HashDB {
         Ok(())
     }
 
-    /// Write the database to a Zlib'd [MessagePack][rmp] file.
-    pub fn to_file<P: AsRef<Path>>(&self, file: P) -> Result<(), HashDBError> {
-        // Use this method over `rmp_serde::to_vec` to avoid overhead on packing
-        // bytes. (If this breaks decoding, maybe live with the overhead?)
-        let mut buf: Vec<u8> = Vec::new();
-        self.serialize(
-            &mut Serializer::new(&mut buf).with_bytes(BytesMode::ForceAll),
-        )?;
-        let mut z = ZlibEncoder::new(Vec::new(), Compression::default());
-        z.write_all(&buf)?;
-        fs::write(file, z.finish()?)?;
-        Ok(())
-    }
-
-    /// Read a database from a Zlib'd [MessagePack][rmp] file.
-    pub fn from_file<P: AsRef<Path>>(file: P) -> Result<Self, HashDBError> {
-        Ok(rmp_serde::from_read(ZlibDecoder::new(
-            fs::read(file)?.as_slice(),
-        ))?)
-    }
-
     /// Read image files from the given directory. Add entries for any images
     /// that do not exist the database. Then, remove entries from the database
     /// that no longer have any corresponding images on the filesystem.
@@ -158,12 +139,9 @@ impl HashDB {
             .map(|x| x.to_string_lossy().into_owned())
             .collect();
 
-        dbg!(&db_images);
-        dbg!(&fs_images);
-
         // Images on filesystem but not in DB - Add to DB
         for file in fs_images.difference(&db_images) {
-            self.insert_image(file)?;
+            self.insert_image(file)?; // [TODO]: Parallelize
         }
 
         // Images in DB but not on filesystem - Remove from DB
@@ -174,11 +152,65 @@ impl HashDB {
         Ok(())
     }
 
-    /// [`read_dir`][HashDB.read_dir] but scan the directory recursively.
+    /// [`read_dir`][HashDB::read_dir] but scan the directory recursively. This
+    /// could be combined with `read_dir` via a recursive flag or whatever, but
+    /// no.
     pub fn read_dir_recursive<P: AsRef<Path>>(
-        &mut self, _root: P,
+        &mut self, root: P,
     ) -> Result<(), HashDBError> {
-        unimplemented!()
+        let db_images: HashSet<String> =
+            self.0.keys().map(|x| x.clone()).collect();
+
+        let fs_images: HashSet<String> = WalkDir::new(&root)
+            .into_iter()
+            .filter_map(|x| x.ok())
+            .filter_map(|x| {
+                let p = x.path();
+                match has_image_suffix(&p) && p.is_file() {
+                    true => p.canonicalize().ok(),
+                    false => None,
+                }
+            })
+            .map(|x| x.to_string_lossy().into_owned())
+            .collect();
+
+        // Images on filesystem but not in DB - Add to DB
+        for file in fs_images.difference(&db_images) {
+            self.insert_image(file)?; // [TODO]: Parallelize
+        }
+
+        // Images in DB but not on filesystem - Remove from DB
+        for file in db_images.difference(&fs_images) {
+            self.0.remove(file);
+        }
+
+        Ok(())
+    }
+
+    /// Search through all pairs of images in the database for all images that
+    /// have a Hamming distance (according to [`image_hasher::ImageHash::dist`])
+    /// below the given threshold.
+    pub fn find_duplicates(&self, _threshold: usize) {}
+
+    /// Write the database to a Zlib'd [MessagePack][rmp] file.
+    pub fn to_file<P: AsRef<Path>>(&self, file: P) -> Result<(), HashDBError> {
+        // Use this method over `rmp_serde::to_vec` to avoid overhead on packing
+        // bytes. (If this breaks decoding, maybe live with the overhead?)
+        let mut buf: Vec<u8> = Vec::new();
+        self.serialize(
+            &mut Serializer::new(&mut buf).with_bytes(BytesMode::ForceAll),
+        )?;
+        let mut z = ZlibEncoder::new(Vec::new(), Compression::default());
+        z.write_all(&buf)?;
+        fs::write(file, z.finish()?)?;
+        Ok(())
+    }
+
+    /// Read a database from a Zlib'd [MessagePack][rmp] file.
+    pub fn from_file<P: AsRef<Path>>(file: P) -> Result<Self, HashDBError> {
+        Ok(rmp_serde::from_read(ZlibDecoder::new(
+            fs::read(file)?.as_slice(),
+        ))?)
     }
 }
 
