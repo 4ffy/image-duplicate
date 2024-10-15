@@ -47,10 +47,6 @@ pub fn run(args: &Args) -> Result<()> {
         return Err(anyhow!("Directory not found: {:?}", root));
     }
 
-    if args.threshold < 0 {
-        return Err(anyhow!("threshold must be >=0"));
-    }
-
     let db_file = match &args.db {
         Some(path) => path.clone(),
         None => root.join(".image_hash.db"),
