@@ -5,6 +5,7 @@
 
 use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use image_hasher::HasherConfig;
+use permutator::LargeCombinationIterator;
 use rmp_serde::{config::BytesMode, Serializer};
 use serde::{
     de::{self, Visitor},
@@ -190,7 +191,20 @@ impl HashDB {
     /// Search through all pairs of images in the database for all images that
     /// have a Hamming distance (according to [`image_hasher::ImageHash::dist`])
     /// below the given threshold.
-    pub fn find_duplicates(&self, _threshold: usize) {}
+    pub fn find_duplicates(&self, threshold: u32) -> Vec<(String, String)> {
+        let entries: Vec<(&String, &ImageHash)> = self.0.iter().collect();
+        LargeCombinationIterator::new(&entries, 2)
+            .filter_map(|comb| {
+                let (name_1, hash_1) = *comb[0];
+                let (name_2, hash_2) = *comb[1];
+                if hash_1.0.dist(&hash_2.0) < threshold {
+                    Some((name_1.clone(), name_2.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 
     /// Write the database to a Zlib'd [MessagePack][rmp] file.
     pub fn to_file<P: AsRef<Path>>(&self, file: P) -> Result<(), HashDBError> {
