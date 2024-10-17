@@ -1,9 +1,9 @@
 use fltk::{
     app::{App, Scheme},
     button::Button,
-    enums::{Align, ColorDepth},
+    enums::ColorDepth,
     frame::Frame,
-    image::{JpegImage, RgbImage},
+    image::RgbImage,
     prelude::*,
     window::Window,
 };
@@ -12,7 +12,7 @@ use image::{DynamicImage, GenericImage};
 use std::path::Path;
 use thiserror::Error;
 
-const THUMB_SIZE: u32 = 256;
+const THUMB_SIZE: u32 = 384;
 
 /// eat
 #[derive(Debug)]
@@ -44,26 +44,21 @@ pub enum GUIError {
 pub type Result<T> = std::result::Result<T, GUIError>;
 
 fn load_image<P: AsRef<Path>>(file: P) -> Result<RgbImage> {
-    let img = image::open(&file)?
+    assert!(file.as_ref().is_file());
+    let img = image::open(file)?
         .thumbnail(THUMB_SIZE, THUMB_SIZE)
         .to_rgba8();
     let mut embed = DynamicImage::new_rgb8(THUMB_SIZE, THUMB_SIZE);
 
     // Embed differently based on with or height larger
-    match (img.width() - img.height()) as isize {
+    match img.width() as isize - img.height() as isize {
         // portrait
-        x if x < 0 => {
-            embed.copy_from(&img, THUMB_SIZE / 2 - img.height() / 2, 0)?
-        }
+        ..=-1 => embed.copy_from(&img, THUMB_SIZE / 2 - img.width() / 2, 0)?,
         // landscape
-        x if x > 0 => {
-            embed.copy_from(&img, 0, THUMB_SIZE / 2 - img.width() / 2)?
-        }
+        1.. => embed.copy_from(&img, 0, THUMB_SIZE / 2 - img.height() / 2)?,
         // square
-        _ => embed.copy_from(&img, 0, 0)?,
+        0 => embed.copy_from(&img, 0, 0)?,
     };
-
-    embed.save("./test.png")?;
 
     Ok(RgbImage::new(
         embed.as_bytes(),
@@ -73,31 +68,33 @@ fn load_image<P: AsRef<Path>>(file: P) -> Result<RgbImage> {
     )?)
 }
 
+fn display_image<P: AsRef<Path>>(f: &mut Frame, file: P) {
+    f.set_image(Some(load_image(&file).unwrap()));
+    f.set_label(file.as_ref().file_name().unwrap().to_str().unwrap());
+    f.redraw();
+}
+
 impl GUI {
     /// Create a new GUI.
     pub fn build(duplicates: Vec<(String, String)>) -> Result<Self> {
         let app = App::default().with_scheme(Scheme::Gtk);
         let mut win = Window::default()
-            .with_size(THUMB_SIZE as i32 * 2, THUMB_SIZE as i32 + 50);
+            .with_size(THUMB_SIZE as i32 * 2, THUMB_SIZE as i32 + 100);
         let mut grid = Grid::default_fill();
 
         // Define widgets
         let mut frame_l = Frame::default()
             .with_label("Left")
-            .with_size(THUMB_SIZE as i32, THUMB_SIZE as i32);
+            .with_size(THUMB_SIZE as i32, THUMB_SIZE as i32 + 50);
         let mut frame_r = Frame::default()
             .with_label("Right")
-            .with_size(THUMB_SIZE as i32, THUMB_SIZE as i32);
+            .with_size(THUMB_SIZE as i32, THUMB_SIZE as i32 + 50);
         let mut button_l =
             Button::default().with_label("Keep left").with_size(1, 50);
         let mut button_c =
             Button::default().with_label("Keep both").with_size(1, 50);
         let mut button_r =
             Button::default().with_label("Keep right").with_size(1, 50);
-
-        frame_l.set_image(
-            JpegImage::load("/usr/share/backgrounds/wallpaper.jpg").ok(),
-        );
 
         // Define grid
         grid.set_layout(2, 6);
@@ -134,12 +131,27 @@ impl GUI {
 
     /// Run the GUI program.
     pub fn run(&mut self) -> Result<()> {
+        // Note: FLTK widgets are reference counted so cloning them is fine and
+        // cheap.
         self.button_l.set_callback({
             let mut frame_l = self.frame_l.clone();
             move |_| {
-                println!("button pushed! Your didi it!");
-                frame_l.set_image(load_image("/home/cameron/Picutres/Memes?/4399ad7c10a53a7e2c027690c9eccc1a.jpg").ok());
-                frame_l.redraw();
+                println!("Left button pushed!");
+                display_image(&mut frame_l, "/home/cameron/Pictures/Memes2/4399ad7c10a53a7e2c027690c9eccc1a.jpg");
+            }
+        });
+
+        self.button_r.set_callback({
+            let mut frame_r = self.frame_r.clone();
+            move |_| {
+                println!("Right button pushed!");
+                display_image(&mut frame_r, "/home/cameron/Pictures/Memes2/64ea577d9e55387200243e2873f05efd.jpg");
+            }
+        });
+
+        self.button_c.set_callback({
+            move |_| {
+                println!("Center button pushed!");
             }
         });
 
