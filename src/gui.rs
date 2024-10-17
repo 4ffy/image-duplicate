@@ -20,7 +20,6 @@ const BUTTON_SIZE: i32 = 50;
 #[derive(Debug)]
 pub struct GUI {
     app: App,
-    win: Window,
     receiver: Receiver<Message>,
     frame_l: Frame,
     frame_r: Frame,
@@ -151,7 +150,6 @@ impl GUI {
 
         Ok(Self {
             app,
-            win,
             receiver,
             frame_l,
             frame_r,
