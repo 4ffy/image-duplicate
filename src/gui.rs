@@ -13,6 +13,7 @@ use std::{fs, path::Path};
 use thiserror::Error;
 
 const THUMB_SIZE: u32 = 384;
+const FRAME_SIZE: i32 = (4 * THUMB_SIZE / 3) as i32;
 
 /// Main GUI struct.
 #[derive(Debug)]
@@ -91,20 +92,20 @@ impl GUI {
     pub fn build(duplicates: Vec<(String, String)>) -> Result<Self> {
         let app = App::default().with_scheme(Scheme::Gtk);
         let (s, receiver) = app::channel();
-        let mut win = Window::default()
-            .with_size(THUMB_SIZE as i32 * 2, THUMB_SIZE as i32 + 100);
+        let mut win =
+            Window::default().with_size(FRAME_SIZE * 2, FRAME_SIZE + 100);
         let mut grid = Grid::default_fill();
 
         // Define widgets
         let mut frame_l = Frame::default()
             .with_label("Left")
-            .with_size(THUMB_SIZE as i32, THUMB_SIZE as i32 + 50);
+            .with_size(FRAME_SIZE as i32, FRAME_SIZE as i32 + 50);
         frame_l.set_frame(FrameType::ThinDownFrame);
         display_image(&mut frame_l, &duplicates[0].0);
 
         let mut frame_r = Frame::default()
             .with_label("Right")
-            .with_size(THUMB_SIZE as i32, THUMB_SIZE as i32 + 50);
+            .with_size(FRAME_SIZE as i32, FRAME_SIZE as i32 + 50);
         frame_r.set_frame(FrameType::ThinDownFrame);
         display_image(&mut frame_l, &duplicates[0].1);
 
