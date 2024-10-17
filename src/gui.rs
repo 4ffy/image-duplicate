@@ -88,8 +88,13 @@ fn load_image<P: AsRef<Path>>(file: P) -> Result<RgbImage> {
 }
 
 fn display_image<P: AsRef<Path>>(f: &mut Frame, file: P) -> Result<()> {
+    let size = image::image_dimensions(&file)?;
+    let label = format!(
+        "{} {size:?}",
+        file.as_ref().file_name().unwrap().to_str().unwrap()
+    );
+    f.set_label(&label);
     f.set_image(Some(load_image(&file)?));
-    f.set_label(file.as_ref().file_name().unwrap().to_str().unwrap());
     Ok(())
 }
 
