@@ -1,7 +1,7 @@
 use fltk::{
-    app::{App, Scheme},
+    app::{self, App, Receiver, Scheme},
     button::Button,
-    enums::ColorDepth,
+    enums::{ColorDepth, FrameType},
     frame::Frame,
     image::RgbImage,
     prelude::*,
@@ -14,18 +14,24 @@ use thiserror::Error;
 
 const THUMB_SIZE: u32 = 384;
 
-/// eat
+/// Main GUI struct.
 #[derive(Debug)]
 pub struct GUI {
     app: App,
     win: Window,
+    receiver: Receiver<Message>,
     frame_l: Frame,
     frame_r: Frame,
-    button_l: Button,
-    button_c: Button,
-    button_r: Button,
     idx: usize,
     duplicates: Vec<(String, String)>,
+}
+
+/// GUI Events
+#[derive(Clone, Copy, Debug)]
+enum Message {
+    LeftPressed,
+    CenterPressed,
+    RightPressed,
 }
 
 /// Errors that may occur when dealing with [`GUI`].
@@ -78,6 +84,7 @@ impl GUI {
     /// Create a new GUI.
     pub fn build(duplicates: Vec<(String, String)>) -> Result<Self> {
         let app = App::default().with_scheme(Scheme::Gtk);
+        let (s, receiver) = app::channel();
         let mut win = Window::default()
             .with_size(THUMB_SIZE as i32 * 2, THUMB_SIZE as i32 + 100);
         let mut grid = Grid::default_fill();
@@ -86,15 +93,26 @@ impl GUI {
         let mut frame_l = Frame::default()
             .with_label("Left")
             .with_size(THUMB_SIZE as i32, THUMB_SIZE as i32 + 50);
+        frame_l.set_frame(FrameType::ThinDownFrame);
+        display_image(&mut frame_l, &duplicates[0].0);
+
         let mut frame_r = Frame::default()
             .with_label("Right")
             .with_size(THUMB_SIZE as i32, THUMB_SIZE as i32 + 50);
+        frame_r.set_frame(FrameType::ThinDownFrame);
+        display_image(&mut frame_l, &duplicates[0].1);
+
         let mut button_l =
             Button::default().with_label("Keep left").with_size(1, 50);
+        button_l.emit(s, Message::LeftPressed);
+
         let mut button_c =
             Button::default().with_label("Keep both").with_size(1, 50);
+        button_c.emit(s, Message::CenterPressed);
+
         let mut button_r =
             Button::default().with_label("Keep right").with_size(1, 50);
+        button_r.emit(s, Message::RightPressed);
 
         // Define grid
         grid.set_layout(2, 6);
@@ -119,43 +137,55 @@ impl GUI {
         Ok(Self {
             app,
             win,
+            receiver,
             frame_l,
             frame_r,
-            button_l,
-            button_c,
-            button_r,
             idx: 0,
             duplicates,
         })
     }
 
-    /// Run the GUI program.
-    pub fn run(&mut self) -> Result<()> {
-        // Note: FLTK widgets are reference counted so cloning them is fine and
-        // cheap.
-        self.button_l.set_callback({
-            let mut frame_l = self.frame_l.clone();
-            move |_| {
-                println!("Left button pushed!");
-                display_image(&mut frame_l, "/home/cameron/Pictures/Memes2/4399ad7c10a53a7e2c027690c9eccc1a.jpg");
+    /// Run the GUI program. Consumes the program.
+    pub fn run(mut self) -> Result<()> {
+        while self.app.wait() {
+            if let Some(msg) = self.receiver.recv() {
+                match msg {
+                    Message::LeftPressed => {
+                        self.idx += 1;
+                        display_image(
+                            &mut self.frame_l,
+                            &self.duplicates[self.idx].0,
+                        );
+                        display_image(
+                            &mut self.frame_r,
+                            &self.duplicates[self.idx].1,
+                        );
+                    }
+                    Message::CenterPressed => {
+                        self.idx += 1;
+                        display_image(
+                            &mut self.frame_l,
+                            &self.duplicates[self.idx].0,
+                        );
+                        display_image(
+                            &mut self.frame_r,
+                            &self.duplicates[self.idx].1,
+                        );
+                    }
+                    Message::RightPressed => {
+                        self.idx += 1;
+                        display_image(
+                            &mut self.frame_l,
+                            &self.duplicates[self.idx].0,
+                        );
+                        display_image(
+                            &mut self.frame_r,
+                            &self.duplicates[self.idx].1,
+                        );
+                    }
+                }
             }
-        });
-
-        self.button_r.set_callback({
-            let mut frame_r = self.frame_r.clone();
-            move |_| {
-                println!("Right button pushed!");
-                display_image(&mut frame_r, "/home/cameron/Pictures/Memes2/64ea577d9e55387200243e2873f05efd.jpg");
-            }
-        });
-
-        self.button_c.set_callback({
-            move |_| {
-                println!("Center button pushed!");
-            }
-        });
-
-        self.app.run()?;
+        }
         Ok(())
     }
 }
