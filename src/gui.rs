@@ -1,7 +1,7 @@
 use fltk::{
     app::{self, App, Receiver, Scheme},
     button::Button,
-    enums::{ColorDepth, FrameType},
+    enums::{ColorDepth, FrameType, Shortcut},
     frame::Frame,
     image::RgbImage,
     prelude::*,
@@ -108,14 +108,17 @@ impl GUI {
 
         let mut button_l =
             Button::default().with_label("Keep left").with_size(1, 50);
+        button_l.set_shortcut(Shortcut::from_char('1'));
         button_l.emit(s, Message::LeftPressed);
 
         let mut button_c =
             Button::default().with_label("Keep both").with_size(1, 50);
+        button_c.set_shortcut(Shortcut::from_char('2'));
         button_c.emit(s, Message::CenterPressed);
 
         let mut button_r =
             Button::default().with_label("Keep right").with_size(1, 50);
+        button_r.set_shortcut(Shortcut::from_char('3'));
         button_r.emit(s, Message::RightPressed);
 
         // Define grid
