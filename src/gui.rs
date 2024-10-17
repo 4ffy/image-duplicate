@@ -182,14 +182,14 @@ impl GUI {
             if let Some(msg) = self.receiver.recv() {
                 match msg {
                     Message::LeftPressed => {
-                        eprintln!("Trashing {img_2}");
+                        eprintln!("Trashing \"{img_2}\"");
                         trash::delete(&img_2)?;
                     }
                     Message::CenterPressed => {
                         eprintln!("Keeping both images");
                     }
                     Message::RightPressed => {
-                        eprintln!("Trashing {img_1}");
+                        eprintln!("Trashing \"{img_1}\"");
                         trash::delete(&img_1)?;
                     }
                 }

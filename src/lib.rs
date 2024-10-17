@@ -57,11 +57,11 @@ pub fn run(args: &Args) -> Result<()> {
 
     let mut hashdb = match db_file.is_file() && !args.rebuild {
         true => {
-            eprintln!("Reading from {db_file:?}...");
+            eprintln!("Reading from {db_file:?}");
             HashDB::from_file(&db_file)?
         }
         false => {
-            eprintln!("Creating new database...");
+            eprintln!("Creating new database");
             HashDB::new()
         }
     };
@@ -75,7 +75,7 @@ pub fn run(args: &Args) -> Result<()> {
     }
 
     if !args.no_dump {
-        eprintln!("Dumping database to {db_file:?}...");
+        eprintln!("Dumping database to {db_file:?}");
         hashdb.to_file(&db_file)?;
     }
 
