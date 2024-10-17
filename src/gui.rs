@@ -53,6 +53,8 @@ pub enum GUIError {
 /// Simple result wrapper.
 pub type Result<T> = std::result::Result<T, GUIError>;
 
+/// Load an image from the filesystem and convert it to a thumbnail-sized FLTK
+/// image.
 fn load_image<P: AsRef<Path>>(file: P) -> Result<RgbImage> {
     assert!(file.as_ref().is_file());
     let img = image::open(file)?
@@ -64,10 +66,10 @@ fn load_image<P: AsRef<Path>>(file: P) -> Result<RgbImage> {
     match img.width() as isize - img.height() as isize {
         // portrait
         ..=-1 => embed.copy_from(&img, THUMB_SIZE / 2 - img.width() / 2, 0)?,
-        // landscape
-        1.. => embed.copy_from(&img, 0, THUMB_SIZE / 2 - img.height() / 2)?,
         // square
         0 => embed.copy_from(&img, 0, 0)?,
+        // landscape
+        1.. => embed.copy_from(&img, 0, THUMB_SIZE / 2 - img.height() / 2)?,
     };
 
     Ok(RgbImage::new(
