@@ -9,7 +9,7 @@ use fltk::{
 };
 use fltk_grid::Grid;
 use image::{DynamicImage, GenericImage};
-use std::path::Path;
+use std::{fs, path::Path};
 use thiserror::Error;
 
 const THUMB_SIZE: u32 = 384;
@@ -44,6 +44,10 @@ pub enum GUIError {
     /// Wrapper around [`image::ImageError`]
     #[error("Image error: {0}")]
     ImageError(#[from] image::ImageError),
+
+    /// Wrapper around [`std::io::Error`]
+    #[error("IO error: {0}")]
+    IOError(#[from] std::io::Error),
 }
 
 /// Simple result wrapper.
@@ -149,39 +153,28 @@ impl GUI {
     pub fn run(mut self) -> Result<()> {
         while self.app.wait() {
             if let Some(msg) = self.receiver.recv() {
+                self.idx += 1;
+                if let None = self.duplicates.get(self.idx) {
+                    continue;
+                }
+
+                let (img_1, img_2) = self.duplicates.get(self.idx).unwrap();
+                if !fs::exists(&img_1)? || !fs::exists(&img_2)? {
+                    continue;
+                }
+
                 match msg {
                     Message::LeftPressed => {
-                        self.idx += 1;
-                        display_image(
-                            &mut self.frame_l,
-                            &self.duplicates[self.idx].0,
-                        );
-                        display_image(
-                            &mut self.frame_r,
-                            &self.duplicates[self.idx].1,
-                        );
+                        display_image(&mut self.frame_l, &img_1);
+                        display_image(&mut self.frame_r, &img_2);
                     }
                     Message::CenterPressed => {
-                        self.idx += 1;
-                        display_image(
-                            &mut self.frame_l,
-                            &self.duplicates[self.idx].0,
-                        );
-                        display_image(
-                            &mut self.frame_r,
-                            &self.duplicates[self.idx].1,
-                        );
+                        display_image(&mut self.frame_l, &img_1);
+                        display_image(&mut self.frame_r, &img_2);
                     }
                     Message::RightPressed => {
-                        self.idx += 1;
-                        display_image(
-                            &mut self.frame_l,
-                            &self.duplicates[self.idx].0,
-                        );
-                        display_image(
-                            &mut self.frame_r,
-                            &self.duplicates[self.idx].1,
-                        );
+                        display_image(&mut self.frame_l, &img_1);
+                        display_image(&mut self.frame_r, &img_2);
                     }
                 }
             }
