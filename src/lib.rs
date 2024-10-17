@@ -38,7 +38,7 @@ pub struct Args {
     pub no_update: bool,
 
     /// Image similarity threshold
-    #[arg(short, long, default_value_t = 10)]
+    #[arg(short, long, default_value_t = 9)]
     pub threshold: u32,
 }
 
