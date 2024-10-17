@@ -3,10 +3,12 @@
 
 use anyhow::{anyhow, Result};
 use clap::Parser;
+use gui::GUI;
 use hashdb::HashDB;
 use std::path::PathBuf;
 
-pub mod hashdb;
+mod gui;
+mod hashdb;
 
 /// Arguments to the image duplicate program.
 #[derive(Debug, Parser)]
@@ -78,7 +80,10 @@ pub fn run(args: &Args) -> Result<()> {
     }
 
     println!("Finding duplicate images...");
-    dbg!(hashdb.find_duplicates(args.threshold));
+    let duplicates = hashdb.find_duplicates(args.threshold);
+
+    let mut gui = GUI::build(duplicates)?;
+    gui.run()?;
 
     Ok(())
 }
