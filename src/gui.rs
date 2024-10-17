@@ -13,7 +13,8 @@ use std::{fs, path::Path};
 use thiserror::Error;
 
 const THUMB_SIZE: u32 = 384;
-const FRAME_SIZE: i32 = (4 * THUMB_SIZE / 3) as i32;
+const FRAME_SIZE: i32 = (5 * THUMB_SIZE / 4) as i32;
+const BUTTON_SIZE: i32 = 50;
 
 /// Main GUI struct.
 #[derive(Debug)]
@@ -93,35 +94,38 @@ impl GUI {
     pub fn build(duplicates: Vec<(String, String)>) -> Result<Self> {
         let app = App::default().with_scheme(Scheme::Gtk);
         let (s, receiver) = app::channel();
-        let mut win =
-            Window::default().with_size(FRAME_SIZE * 2, FRAME_SIZE + 100);
+        let mut win = Window::default()
+            .with_size(FRAME_SIZE * 2, FRAME_SIZE + BUTTON_SIZE);
         let mut grid = Grid::default_fill();
 
         // Define widgets
         let mut frame_l = Frame::default()
             .with_label("Left")
-            .with_size(FRAME_SIZE as i32, FRAME_SIZE as i32 + 50);
+            .with_size(FRAME_SIZE, FRAME_SIZE);
         frame_l.set_frame(FrameType::ThinDownFrame);
         display_image(&mut frame_l, &duplicates[0].0)?;
 
         let mut frame_r = Frame::default()
             .with_label("Right")
-            .with_size(FRAME_SIZE as i32, FRAME_SIZE as i32 + 50);
+            .with_size(FRAME_SIZE, FRAME_SIZE);
         frame_r.set_frame(FrameType::ThinDownFrame);
         display_image(&mut frame_r, &duplicates[0].1)?;
 
-        let mut button_l =
-            Button::default().with_label("Keep left").with_size(1, 50);
+        let mut button_l = Button::default()
+            .with_label("Keep left")
+            .with_size(1, BUTTON_SIZE);
         button_l.set_shortcut(Shortcut::from_char('1'));
         button_l.emit(s, Message::LeftPressed);
 
-        let mut button_c =
-            Button::default().with_label("Keep both").with_size(1, 50);
+        let mut button_c = Button::default()
+            .with_label("Keep both")
+            .with_size(1, BUTTON_SIZE);
         button_c.set_shortcut(Shortcut::from_char('2'));
         button_c.emit(s, Message::CenterPressed);
 
-        let mut button_r =
-            Button::default().with_label("Keep right").with_size(1, 50);
+        let mut button_r = Button::default()
+            .with_label("Keep right")
+            .with_size(1, BUTTON_SIZE);
         button_r.set_shortcut(Shortcut::from_char('3'));
         button_r.emit(s, Message::RightPressed);
 
