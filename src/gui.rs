@@ -20,6 +20,7 @@ const BUTTON_SIZE: i32 = 50;
 #[derive(Debug)]
 pub struct GUI {
     app: App,
+    win: Window,
     receiver: Receiver<Message>,
     frame_l: Frame,
     frame_r: Frame,
@@ -84,7 +85,6 @@ fn load_image<P: AsRef<Path>>(file: P) -> Result<RgbImage> {
 fn display_image<P: AsRef<Path>>(f: &mut Frame, file: P) -> Result<()> {
     f.set_image(Some(load_image(&file)?));
     f.set_label(file.as_ref().file_name().unwrap().to_str().unwrap());
-    f.redraw();
     Ok(())
 }
 
@@ -109,13 +109,11 @@ impl GUI {
             .with_label("Left")
             .with_size(FRAME_SIZE, FRAME_SIZE);
         frame_l.set_frame(FrameType::ThinDownFrame);
-        display_image(&mut frame_l, &duplicates[0].0)?;
 
         let mut frame_r = Frame::default()
             .with_label("Right")
             .with_size(FRAME_SIZE, FRAME_SIZE);
         frame_r.set_frame(FrameType::ThinDownFrame);
-        display_image(&mut frame_r, &duplicates[0].1)?;
 
         let mut button_l = Button::default()
             .with_label("Keep left")
@@ -157,6 +155,7 @@ impl GUI {
 
         Ok(Self {
             app,
+            win,
             receiver,
             frame_l,
             frame_r,
@@ -167,33 +166,44 @@ impl GUI {
 
     /// Run the GUI program. Consumes the program.
     pub fn run(mut self) -> Result<()> {
+        let (mut img_1, mut img_2) = match self.duplicates.get(self.idx) {
+            Some(dup) => (&dup.0, &dup.1),
+            None => return Ok(()),
+        };
+        display_image(&mut self.frame_l, &img_1)?;
+        display_image(&mut self.frame_r, &img_2)?;
+
         while self.app.wait() {
             if let Some(msg) = self.receiver.recv() {
-                self.idx += 1;
-
-                let (img_1, img_2) = match self.duplicates.get(self.idx) {
-                    Some(dup) => (&dup.0, &dup.1),
-                    None => break,
-                };
-
-                if !fs::exists(&img_1)? || !fs::exists(&img_2)? {
-                    continue;
-                }
-
                 match msg {
                     Message::LeftPressed => {
-                        display_image(&mut self.frame_l, &img_1)?;
-                        display_image(&mut self.frame_r, &img_2)?;
+                        eprintln!("Trashing {img_2}")
                     }
                     Message::CenterPressed => {
-                        display_image(&mut self.frame_l, &img_1)?;
-                        display_image(&mut self.frame_r, &img_2)?;
+                        eprintln!("Keeping both images")
                     }
                     Message::RightPressed => {
-                        display_image(&mut self.frame_l, &img_1)?;
-                        display_image(&mut self.frame_r, &img_2)?;
+                        eprintln!("Trashing {img_1}")
                     }
                 }
+
+                self.idx += 1;
+                (img_1, img_2) = match self.duplicates.get(self.idx) {
+                    Some(dup) => (&dup.0, &dup.1),
+                    None => return Ok(()),
+                };
+
+                while !fs::exists(&img_1)? || !fs::exists(&img_2)? {
+                    self.idx += 1;
+                    (img_1, img_2) = match self.duplicates.get(self.idx) {
+                        Some(dup) => (&dup.0, &dup.1),
+                        None => return Ok(()),
+                    };
+                }
+
+                display_image(&mut self.frame_l, &img_1)?;
+                display_image(&mut self.frame_r, &img_2)?;
+                self.win.redraw();
             }
         }
         Ok(())
