@@ -92,10 +92,17 @@ impl GUI {
     /// Create a new GUI.
     pub fn build(duplicates: Vec<(String, String)>) -> Result<Self> {
         let app = App::default().with_scheme(Scheme::Gtk);
-        let (s, receiver) = app::channel();
         let mut win = Window::default()
             .with_size(FRAME_SIZE * 2, FRAME_SIZE + BUTTON_SIZE);
+        win.size_range(
+            THUMB_SIZE as i32 * 2,
+            THUMB_SIZE as i32 + BUTTON_SIZE,
+            0,
+            0,
+        );
+        win.make_resizable(true);
         let mut grid = Grid::default_fill();
+        let (s, receiver) = app::channel();
 
         // Define widgets
         let mut frame_l = Frame::default()
