@@ -44,42 +44,42 @@ pub struct Args {
 
 /// Run the image duplicate program.
 pub fn run(args: &Args) -> Result<()> {
-    let root = args.path.clone();
-    if !root.is_dir() {
-        return Err(anyhow!("Directory not found: {:?}", root));
+    let path = args.path.clone();
+    if !path.is_dir() {
+        return Err(anyhow!("Directory not found: {path:?}"));
     }
 
     let db_file = match &args.db {
         Some(path) => path.clone(),
-        None => root.join(".image_hash.db"),
+        None => path.join(".image_hash.db"),
     };
-    println!("Database file is {:?}.", db_file);
+    eprintln!("Database file is {db_file:?}");
 
     let mut hashdb = match db_file.is_file() && !args.rebuild {
         true => {
-            println!("Reading from {:?}...", db_file);
+            eprintln!("Reading from {db_file:?}...");
             HashDB::from_file(&db_file)?
         }
         false => {
-            println!("Creating new database...");
+            eprintln!("Creating new database...");
             HashDB::new()
         }
     };
 
     if !args.no_update {
-        println!("Hashing images in {:?}...", root);
+        eprintln!("Hashing images in {path:?}...");
         match args.recursive {
-            true => hashdb.read_dir_recursive(root)?,
-            false => hashdb.read_dir(root)?,
+            true => hashdb.read_dir_recursive(path)?,
+            false => hashdb.read_dir(path)?,
         }
     }
 
     if !args.no_dump {
-        println!("Dumping database to {:?}...", db_file);
+        eprintln!("Dumping database to {db_file:?}...");
         hashdb.to_file(&db_file)?;
     }
 
-    println!("Finding duplicate images...");
+    eprintln!("Finding duplicate images...");
     let duplicates = hashdb.find_duplicates(args.threshold);
 
     let gui = GUI::build(duplicates)?;
