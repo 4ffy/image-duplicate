@@ -82,7 +82,7 @@ pub fn run(args: &Args) -> Result<()> {
     println!("Finding duplicate images...");
     let duplicates = hashdb.find_duplicates(args.threshold);
 
-    let mut gui = GUI::build(duplicates)?;
+    let gui = GUI::build(duplicates)?;
     gui.run()?;
 
     Ok(())

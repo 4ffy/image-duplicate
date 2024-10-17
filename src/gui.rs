@@ -81,10 +81,11 @@ fn load_image<P: AsRef<Path>>(file: P) -> Result<RgbImage> {
     )?)
 }
 
-fn display_image<P: AsRef<Path>>(f: &mut Frame, file: P) {
-    f.set_image(Some(load_image(&file).unwrap()));
+fn display_image<P: AsRef<Path>>(f: &mut Frame, file: P) -> Result<()> {
+    f.set_image(Some(load_image(&file)?));
     f.set_label(file.as_ref().file_name().unwrap().to_str().unwrap());
     f.redraw();
+    Ok(())
 }
 
 impl GUI {
@@ -101,13 +102,13 @@ impl GUI {
             .with_label("Left")
             .with_size(FRAME_SIZE as i32, FRAME_SIZE as i32 + 50);
         frame_l.set_frame(FrameType::ThinDownFrame);
-        display_image(&mut frame_l, &duplicates[0].0);
+        display_image(&mut frame_l, &duplicates[0].0)?;
 
         let mut frame_r = Frame::default()
             .with_label("Right")
             .with_size(FRAME_SIZE as i32, FRAME_SIZE as i32 + 50);
         frame_r.set_frame(FrameType::ThinDownFrame);
-        display_image(&mut frame_l, &duplicates[0].1);
+        display_image(&mut frame_r, &duplicates[0].1)?;
 
         let mut button_l =
             Button::default().with_label("Keep left").with_size(1, 50);
@@ -160,27 +161,28 @@ impl GUI {
         while self.app.wait() {
             if let Some(msg) = self.receiver.recv() {
                 self.idx += 1;
-                if let None = self.duplicates.get(self.idx) {
-                    continue;
-                }
 
-                let (img_1, img_2) = self.duplicates.get(self.idx).unwrap();
+                let (img_1, img_2) = match self.duplicates.get(self.idx) {
+                    Some(dup) => (&dup.0, &dup.1),
+                    None => break,
+                };
+
                 if !fs::exists(&img_1)? || !fs::exists(&img_2)? {
                     continue;
                 }
 
                 match msg {
                     Message::LeftPressed => {
-                        display_image(&mut self.frame_l, &img_1);
-                        display_image(&mut self.frame_r, &img_2);
+                        display_image(&mut self.frame_l, &img_1)?;
+                        display_image(&mut self.frame_r, &img_2)?;
                     }
                     Message::CenterPressed => {
-                        display_image(&mut self.frame_l, &img_1);
-                        display_image(&mut self.frame_r, &img_2);
+                        display_image(&mut self.frame_l, &img_1)?;
+                        display_image(&mut self.frame_r, &img_2)?;
                     }
                     Message::RightPressed => {
-                        display_image(&mut self.frame_l, &img_1);
-                        display_image(&mut self.frame_r, &img_2);
+                        display_image(&mut self.frame_l, &img_1)?;
+                        display_image(&mut self.frame_r, &img_2)?;
                     }
                 }
             }
