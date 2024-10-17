@@ -11,6 +11,7 @@ use fltk_grid::Grid;
 use image::{DynamicImage, GenericImage};
 use std::{fs, path::Path};
 use thiserror::Error;
+use trash;
 
 const THUMB_SIZE: u32 = 384;
 const FRAME_SIZE: i32 = (5 * THUMB_SIZE / 4) as i32;
@@ -50,6 +51,10 @@ pub enum GUIError {
     /// Wrapper around [`std::io::Error`]
     #[error("IO error: {0}")]
     IOError(#[from] std::io::Error),
+
+    /// Wrapper around [`trash::Error`]
+    #[error("Trash error: {0}")]
+    TrashError(#[from] trash::Error),
 }
 
 /// Simple result wrapper.
@@ -177,13 +182,15 @@ impl GUI {
             if let Some(msg) = self.receiver.recv() {
                 match msg {
                     Message::LeftPressed => {
-                        eprintln!("Trashing {img_2}")
+                        eprintln!("Trashing {img_2}");
+                        trash::delete(&img_2)?;
                     }
                     Message::CenterPressed => {
-                        eprintln!("Keeping both images")
+                        eprintln!("Keeping both images");
                     }
                     Message::RightPressed => {
-                        eprintln!("Trashing {img_1}")
+                        eprintln!("Trashing {img_1}");
+                        trash::delete(&img_1)?;
                     }
                 }
 
