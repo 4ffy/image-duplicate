@@ -6,6 +6,7 @@
 use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use image_hasher::HasherConfig;
 use permutator::LargeCombinationIterator;
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use rmp_serde::{config::BytesMode, Serializer};
 use serde::{
     de::{self, Visitor},
@@ -23,17 +24,6 @@ use thiserror::Error;
 use walkdir::WalkDir;
 
 const SUFFIXES: [&str; 7] = ["bmp", "gif", "jpg", "jpeg", "jxl", "png", "webp"];
-
-fn has_image_suffix<P: AsRef<Path>>(file: P) -> bool {
-    // uhh...
-    match file.as_ref().extension() {
-        Some(x) => match x.to_str() {
-            Some(x) => SUFFIXES.contains(&x),
-            None => false,
-        },
-        None => false,
-    }
-}
 
 /// Wrapper around [`image_hasher::ImageHash`] for serialization.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -94,27 +84,37 @@ impl<'de> Visitor<'de> for ImageHashVisitor {
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub struct HashDB(HashMap<String, ImageHash>);
 
+fn has_image_suffix<P: AsRef<Path>>(file: P) -> bool {
+    // uhh...
+    match file.as_ref().extension() {
+        Some(x) => match x.to_str() {
+            Some(x) => SUFFIXES.contains(&x),
+            None => false,
+        },
+        None => false,
+    }
+}
+
+fn hash_image<P: AsRef<Path>>(
+    file: P,
+) -> Result<(String, ImageHash), HashDBError> {
+    let hasher = HasherConfig::new().to_hasher();
+
+    let image = image::open(&file)?;
+    let temp = image
+        .resize(256, 256, image_hasher::FilterType::Nearest)
+        .blur(3.0);
+
+    let name = file.as_ref().canonicalize()?.to_string_lossy().into_owned();
+    let hash = hasher.hash_image(&temp);
+
+    Ok((name, hash.into()))
+}
+
 impl HashDB {
     /// Create a new hash database.
     pub fn new() -> Self {
         HashDB(HashMap::new())
-    }
-
-    /// Hash an image and insert it into the database.
-    pub fn insert_image<P: AsRef<Path>>(
-        &mut self, file: P,
-    ) -> Result<(), HashDBError> {
-        // If I am to hash in parallel, each will need its own hasher, probably.
-        let hasher = HasherConfig::new().to_hasher();
-
-        let image = image::open(&file)?;
-        let temp = image.resize(256, 256, image_hasher::FilterType::Nearest);
-
-        let name = file.as_ref().canonicalize()?.to_string_lossy().into_owned();
-        let hash = hasher.hash_image(&temp);
-
-        self.0.insert(name, hash.into());
-        Ok(())
     }
 
     /// Read image files from the given directory. Add entries for any images
@@ -141,8 +141,13 @@ impl HashDB {
             .collect();
 
         // Images on filesystem but not in DB - Add to DB
-        for file in fs_images.difference(&db_images) {
-            self.insert_image(file)?; // [TODO]: Parallelize
+        let hashes: Vec<(String, ImageHash)> = fs_images
+            .difference(&db_images)
+            .par_bridge()
+            .map(|img| hash_image(img))
+            .collect::<Result<Vec<_>, _>>()?;
+        for (name, hash) in hashes {
+            self.0.insert(name, hash);
         }
 
         // Images in DB but not on filesystem - Remove from DB
@@ -176,8 +181,13 @@ impl HashDB {
             .collect();
 
         // Images on filesystem but not in DB - Add to DB
-        for file in fs_images.difference(&db_images) {
-            self.insert_image(file)?; // [TODO]: Parallelize
+        let hashes: Vec<(String, ImageHash)> = fs_images
+            .difference(&db_images)
+            .par_bridge()
+            .map(|img| hash_image(img))
+            .collect::<Result<Vec<_>, _>>()?;
+        for (name, hash) in hashes {
+            self.0.insert(name, hash);
         }
 
         // Images in DB but not on filesystem - Remove from DB
