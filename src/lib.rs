@@ -57,7 +57,7 @@ pub fn run(args: &Args) -> Result<()> {
 
     let mut hashdb = match db_file.is_file() && !args.rebuild {
         true => {
-            eprintln!("Reading from {db_file:?}");
+            eprintln!("Reading database file");
             HashDB::from_file(&db_file)?
         }
         false => {

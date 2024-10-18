@@ -102,6 +102,7 @@ impl GUI {
     /// Create a new GUI.
     pub fn build(duplicates: Vec<(String, String)>) -> Result<Self> {
         let app = App::default().with_scheme(Scheme::Gtk);
+        let (s, receiver) = app::channel();
         let mut win = Window::default()
             .with_size(FRAME_SIZE * 2, FRAME_SIZE + BUTTON_SIZE);
         win.size_range(
@@ -112,7 +113,6 @@ impl GUI {
         );
         win.make_resizable(true);
         let mut grid = Grid::default_fill();
-        let (s, receiver) = app::channel();
 
         // Define widgets
         let mut frame_l = Frame::default()
@@ -161,7 +161,6 @@ impl GUI {
         // Finalize
         grid.end();
         win.end();
-        win.show();
 
         Ok(Self {
             app,
@@ -176,6 +175,8 @@ impl GUI {
 
     /// Run the GUI program. Consumes the program.
     pub fn run(mut self) -> Result<()> {
+        self.win.show();
+
         let (mut img_1, mut img_2) = match self.duplicates.get(self.idx) {
             Some(dup) => (&dup.0, &dup.1),
             None => return Ok(()),
