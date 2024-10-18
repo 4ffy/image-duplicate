@@ -3,11 +3,11 @@ use fltk::{
     button::Button,
     enums::{ColorDepth, FrameType, Shortcut},
     frame::Frame,
+    group::Flex,
     image::RgbImage,
     prelude::*,
     window::Window,
 };
-use fltk_grid::Grid;
 use image::{DynamicImage, GenericImage};
 use std::{fs, path::Path};
 use thiserror::Error;
@@ -101,65 +101,44 @@ fn display_image<P: AsRef<Path>>(f: &mut Frame, file: P) -> Result<()> {
 impl GUI {
     /// Create a new GUI.
     pub fn build(duplicates: Vec<(String, String)>) -> Result<Self> {
-        let app = App::default().with_scheme(Scheme::Gtk);
         let (s, receiver) = app::channel();
+        let app = App::default().with_scheme(Scheme::Gtk);
+
         let mut win = Window::default()
             .with_size(FRAME_SIZE * 2, FRAME_SIZE + BUTTON_SIZE);
         win.size_range(
             THUMB_SIZE as i32 * 2,
-            THUMB_SIZE as i32 + BUTTON_SIZE,
+            THUMB_SIZE as i32 + BUTTON_SIZE + BUTTON_SIZE / 2,
             0,
             0,
         );
         win.make_resizable(true);
-        let mut grid = Grid::default_fill();
 
-        // Define widgets
-        let mut frame_l = Frame::default()
-            .with_label("Left")
-            .with_size(FRAME_SIZE, FRAME_SIZE);
+        let mut main = Flex::default().column().size_of_parent();
+
+        let row1 = Flex::default().row();
+        let mut frame_l = Frame::default().with_label("Left");
+        let mut frame_r = Frame::default().with_label("Right");
         frame_l.set_frame(FrameType::ThinDownFrame);
-
-        let mut frame_r = Frame::default()
-            .with_label("Right")
-            .with_size(FRAME_SIZE, FRAME_SIZE);
         frame_r.set_frame(FrameType::ThinDownFrame);
+        row1.end();
 
-        let mut button_l = Button::default()
-            .with_label("Keep left")
-            .with_size(1, BUTTON_SIZE);
-        button_l.set_shortcut(Shortcut::from_char('1'));
+        let row2 = Flex::default().row();
+        let mut button_l = Button::default().with_label("1: Keep left");
+        let mut button_c = Button::default().with_label("2: Keep both");
+        let mut button_r = Button::default().with_label("3: Keep right");
         button_l.emit(s, Message::LeftPressed);
-
-        let mut button_c = Button::default()
-            .with_label("Keep both")
-            .with_size(1, BUTTON_SIZE);
-        button_c.set_shortcut(Shortcut::from_char('2'));
         button_c.emit(s, Message::CenterPressed);
-
-        let mut button_r = Button::default()
-            .with_label("Keep right")
-            .with_size(1, BUTTON_SIZE);
-        button_r.set_shortcut(Shortcut::from_char('3'));
         button_r.emit(s, Message::RightPressed);
+        button_l.set_shortcut(Shortcut::from_char('1'));
+        button_c.set_shortcut(Shortcut::from_char('2'));
+        button_r.set_shortcut(Shortcut::from_char('3'));
+        row2.end();
 
-        // Define grid
-        grid.set_layout(2, 6);
-        for col in 0..6 {
-            grid.set_col_weight(col, 1);
-        }
-        grid.set_row_weight(0, 1);
-        grid.set_row_weight(1, 0);
+        main.fixed(&row2, BUTTON_SIZE);
 
-        // Grid widgets
-        grid.set_widget(&mut frame_l, 0, 0..3)?;
-        grid.set_widget(&mut frame_r, 0, 3..6)?;
-        grid.set_widget(&mut button_l, 1, 0..2)?;
-        grid.set_widget(&mut button_c, 1, 2..4)?;
-        grid.set_widget(&mut button_r, 1, 4..6)?;
+        main.end();
 
-        // Finalize
-        grid.end();
         win.end();
 
         Ok(Self {
