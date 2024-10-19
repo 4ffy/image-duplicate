@@ -100,7 +100,13 @@ fn hash_image<P: AsRef<Path>>(
 ) -> Result<(String, ImageHash), HashDBError> {
     let hasher = HasherConfig::new().to_hasher();
 
-    let image = image::open(&file)?;
+    let image = match image::open(&file) {
+        Ok(i) => Ok(i),
+        Err(e) => {
+            Err(HashDBError::ImageError(format!("{:?}", file.as_ref()), e))
+        }
+    }?;
+
     let temp = image
         .resize(256, 256, image_hasher::FilterType::Nearest)
         .blur(3.0);
@@ -251,16 +257,16 @@ impl Display for HashDB {
 #[derive(Debug, Error)]
 pub enum HashDBError {
     /// Wrapper around [`rmp_serde::decode::Error`].
-    #[error("could not decode database: {0}")]
+    #[error("Could not decode database: {0}")]
     DecodeError(#[from] rmp_serde::decode::Error),
 
     /// Wrapper around [`rmp_serde::encode::Error`].
-    #[error("could not encode database: {0}")]
+    #[error("Could not encode database: {0}")]
     EncodeError(#[from] rmp_serde::encode::Error),
 
     /// Wrapper around [`image::ImageError`]
-    #[error("could not read image: {0}")]
-    ImageError(#[from] image::ImageError),
+    #[error("Could not read {0}: {1}")]
+    ImageError(String, image::ImageError),
 
     /// Wrapper around [`std::io::Error`].
     #[error("IO Error: {0}")]
