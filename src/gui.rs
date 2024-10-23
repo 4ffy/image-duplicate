@@ -15,7 +15,8 @@ use trash;
 
 const THUMB_SIZE: u32 = 384;
 const FRAME_SIZE: i32 = (5 * THUMB_SIZE / 4) as i32;
-const BUTTON_SIZE: i32 = 50;
+const BUTTON_SIZE: i32 = 40;
+const EXTRA_PADDING: i32 = 10;
 
 /// Main GUI struct.
 #[derive(Debug)]
@@ -102,13 +103,13 @@ impl GUI {
     /// Create a new GUI.
     pub fn build(duplicates: Vec<(String, String)>) -> Result<Self> {
         let (s, receiver) = app::channel();
-        let app = App::default().with_scheme(Scheme::Gtk);
+        let app = App::default().with_scheme(Scheme::Base);
 
         let mut win = Window::default()
             .with_size(FRAME_SIZE * 2, FRAME_SIZE + BUTTON_SIZE);
         win.size_range(
-            THUMB_SIZE as i32 * 2,
-            THUMB_SIZE as i32 + BUTTON_SIZE + BUTTON_SIZE / 2,
+            THUMB_SIZE as i32 * 2 + EXTRA_PADDING,
+            THUMB_SIZE as i32 + BUTTON_SIZE + BUTTON_SIZE / 2 + EXTRA_PADDING,
             0,
             0,
         );
@@ -117,13 +118,13 @@ impl GUI {
         let mut main = Flex::default().column().size_of_parent();
 
         let row1 = Flex::default().row();
-        let mut frame_l = Frame::default().with_label("Left");
-        let mut frame_r = Frame::default().with_label("Right");
-        frame_l.set_frame(FrameType::ThinDownFrame);
-        frame_r.set_frame(FrameType::ThinDownFrame);
+        let mut frame_l = Frame::default();
+        let mut frame_r = Frame::default();
+        frame_l.set_frame(FrameType::EngravedBox);
+        frame_r.set_frame(FrameType::EngravedBox);
         row1.end();
 
-        let row2 = Flex::default().row();
+        let mut row2 = Flex::default().row();
         let mut button_l = Button::default().with_label("1: Keep left");
         let mut button_c = Button::default().with_label("2: Keep both");
         let mut button_r = Button::default().with_label("3: Keep right");
@@ -133,6 +134,7 @@ impl GUI {
         button_l.set_shortcut(Shortcut::from_char('1'));
         button_c.set_shortcut(Shortcut::from_char('2'));
         button_r.set_shortcut(Shortcut::from_char('3'));
+        row2.set_margins(5, 0, 5, 5);
         row2.end();
 
         main.fixed(&row2, BUTTON_SIZE);
