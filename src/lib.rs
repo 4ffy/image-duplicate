@@ -10,7 +10,7 @@ use std::path::PathBuf;
 mod gui;
 mod hashdb;
 
-/// Arguments to the image duplicate program.
+/// GUI for scanning and handling visually similar images in a directory.
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 pub struct Args {

@@ -264,7 +264,7 @@ pub enum HashDBError {
     #[error("Could not encode database: {0}")]
     EncodeError(#[from] rmp_serde::encode::Error),
 
-    /// Wrapper around [`image::ImageError`]
+    /// Wrapper around [`image::ImageError`].
     #[error("Could not read {0}: {1}")]
     ImageError(String, image::ImageError),
 
