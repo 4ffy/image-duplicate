@@ -30,7 +30,7 @@ be controlled via the `RAYON_NUM_THREADS` environment variable.
 
  - Add a config file to control similarity threshold and database handling and
    such.
- - Support an ignore file so skip over known-similar images that I want to keep
+ - Support an ignore file to skip over known-similar images that I want to keep
    around.
  - Use `XDG_CACHE_HOME` or platform equivalent to store the cached hashes rather
    than putting them in the image directory. This requires some sort of path
