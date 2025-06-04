@@ -26,7 +26,7 @@ tries to speed up the process by hashing a number of images in parallel. By
 default, this process uses as many threads on the system as possible. This can
 be controlled via the `RAYON_NUM_THREADS` environment variable.
 
-## Todo
+## Todo (Maybe Never)
 
  - Add a config file to control similarity threshold and database handling and
    such.
@@ -42,7 +42,8 @@ be controlled via the `RAYON_NUM_THREADS` environment variable.
 ## Building
 
 `cargo build`, I should hope. This program relies on bundled FLTK provided by
-the `fltk-rs` crate, so you also need a C++ compiler usable by Cargo.
+the `fltk-rs` crate, so you also need a C++ compiler usable by Cargo. This
+program is only tested on Linux.
 
 ## Disclaimer
 
