@@ -8,7 +8,7 @@ also keep both images if desired. Because calculating a large number of
 perceptual hashes is computationally expensive, the program caches hash results
 to a file, which is automatically updated when the user runs the program again.
 
-<data/screenshot.png>
+![](https://github.com/4ffy/image-duplicate/blob/main/data/screenshot.png)
 
 ## Usage
 
