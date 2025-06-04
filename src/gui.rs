@@ -108,7 +108,10 @@ fn display_image<P: AsRef<Path>>(f: &mut Frame, file: P) -> Result<()> {
     let size = image::image_dimensions(&file)?;
     let label = format!(
         "{} {size:?}",
-        file.as_ref().file_name().unwrap().to_str().unwrap()
+        file.as_ref()
+            .file_name()
+            .expect("display_image should only receive valid filenames")
+            .to_string_lossy()
     );
     f.set_label(&label);
     f.set_image(Some(load_image(&file)?));

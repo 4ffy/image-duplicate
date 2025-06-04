@@ -16,7 +16,7 @@
 
 //! The main image duplicate program.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use gui::GUI;
 use hashdb::HashDB;

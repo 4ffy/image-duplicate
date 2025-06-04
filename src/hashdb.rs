@@ -19,14 +19,14 @@
 //! hashing image files as well as reading and writing to Zlib'd
 //! [MessagePack][`rmp`].
 
-use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
+use flate2::{Compression, read::ZlibDecoder, write::ZlibEncoder};
 use image_hasher::HasherConfig;
 use permutator::LargeCombinationIterator;
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use rmp_serde::{config::BytesMode, Serializer};
+use rmp_serde::{Serializer, config::BytesMode};
 use serde::{
-    de::{self, Visitor},
     Deserialize, Serialize,
+    de::{self, Visitor},
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -76,7 +76,8 @@ impl<'de> Visitor<'de> for ImageHashVisitor {
     type Value = ImageHash;
 
     fn expecting(
-        &self, formatter: &mut std::fmt::Formatter,
+        &self,
+        formatter: &mut std::fmt::Formatter,
     ) -> std::fmt::Result {
         formatter.write_str("bytes representing an image hash")
     }
@@ -143,7 +144,8 @@ impl HashDB {
     /// that do not exist the database. Then, remove entries from the database
     /// that no longer have any corresponding images on the filesystem.
     pub fn read_dir<P: AsRef<Path>>(
-        &mut self, root: P,
+        &mut self,
+        root: P,
     ) -> Result<(), HashDBError> {
         // I have to clone the keys from the DB because if I use references, It
         // borrows the database and I can't insert any new entries.
@@ -184,7 +186,8 @@ impl HashDB {
     /// could be combined with `read_dir` via a recursive flag or whatever, but
     /// no.
     pub fn read_dir_recursive<P: AsRef<Path>>(
-        &mut self, root: P,
+        &mut self,
+        root: P,
     ) -> Result<(), HashDBError> {
         let db_images: HashSet<String> =
             self.0.keys().map(|x| x.clone()).collect();
